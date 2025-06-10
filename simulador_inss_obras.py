@@ -17,9 +17,23 @@ percentuais_equivalencia = {
     "Garagem/Estacionamento sob projeção": 0.25
 }
 
+# Tabela de percentuais de mão de obra conforme tipo de obra e material
+percentuais_mao_obra = {
+    "Residencial Unifamiliar": {"Alvenaria": 0.20, "Madeira": 0.15, "Mista": 0.15},
+    "Residencial Multifamiliar": {"Alvenaria": 0.20, "Madeira": 0.15, "Mista": 0.15},
+    "Comercial Salas e Lojas": {"Alvenaria": 0.20, "Madeira": 0.15, "Mista": 0.15},
+    "Edifício de Garagens": {"Alvenaria": 0.20, "Madeira": 0.15, "Mista": 0.15},
+    "Galpão Industrial": {"Alvenaria": 0.20, "Madeira": 0.15, "Mista": 0.15},
+    "Casa Popular": {"Alvenaria": 0.12, "Madeira": 0.07, "Mista": 0.07},
+    "Conjunto Habitacional Popular": {"Alvenaria": 0.12, "Madeira": 0.07, "Mista": 0.07},
+}
+
 # Entradas do usuário
 with st.form("form_inss"):
     st.subheader("Dados da Obra")
+    tipo_obra = st.selectbox("Tipo da Obra", list(percentuais_mao_obra.keys()))
+    tipo_material = st.selectbox("Tipo de Material", ["Alvenaria", "Madeira", "Mista"])
+
     area_principal = st.number_input("Área principal da obra (m²)", min_value=1.0, value=100.0)
     area_complementar = st.number_input("Área complementar (quadra, piscina, estacionamento externo, etc.) (m²)", min_value=0.0, value=0.0)
 
@@ -38,7 +52,6 @@ with st.form("form_inss"):
     e_pf = st.checkbox("Obra registrada como Pessoa Física?", value=True)
     dctf_mensal = st.checkbox("Entrega contínua da DCTFWeb?", value=True)
     rem_corrente = st.number_input("Total de remunerações declaradas (R$)", min_value=0.0, value=80000.0)
-    rmt = st.number_input("Remuneração estimada (RMT) da obra (R$)", min_value=0.0, value=120000.0)
 
     submit = st.form_submit_button("Calcular INSS")
 
@@ -48,7 +61,11 @@ if submit:
     if usa_usinado:
         cod *= 0.95
 
-    # 2. Fator social (conforme área principal da obra)
+    # 2. RMT (Remuneração estimada da mão de obra)
+    percentual_mao_obra = percentuais_mao_obra[tipo_obra][tipo_material]
+    rmt = cod * percentual_mao_obra
+
+    # 3. Fator social (conforme área principal da obra)
     if area_principal <= 100:
         fator_social = 0.20
     elif area_principal <= 200:
@@ -62,7 +79,7 @@ if submit:
 
     base_social = cod * fator_social
 
-    # 3. Fator de ajuste (condicional)
+    # 4. Fator de ajuste (condicional)
     fator_ajuste_aplicado = False
     if e_pf and dctf_mensal:
         percentual_min = 0.5 if area_principal <= 350 else 0.7
@@ -75,13 +92,15 @@ if submit:
     else:
         base_ajustada = base_social
 
-    # 4. INSS devido
+    # 5. INSS devido
     inss = base_ajustada * 0.20
 
     st.markdown("---")
     st.subheader("Resultado")
     st.write(f"**Área total considerada:** {area_total:,.2f} m²")
     st.write(f"**Base COD:** R$ {cod:,.2f}")
+    st.write(f"**Percentual de mão de obra aplicado:** {percentual_mao_obra*100:.0f}%")
+    st.write(f"**RMT calculada:** R$ {rmt:,.2f}")
     st.write(f"**Fator social aplicado:** {fator_social*100:.0f}%")
     st.write(f"**Base após fator social:** R$ {base_social:,.2f}")
 
