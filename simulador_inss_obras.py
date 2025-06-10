@@ -17,6 +17,14 @@ percentuais_equivalencia = {
     "Garagem/Estacionamento sob projeção": 0.25
 }
 
+# Percentuais para áreas complementares (fora da projeção do corpo principal)
+# com opção para coberta (redução de 50%) ou descoberta (redução de 75%)
+percentuais_complementares = {
+    "Quadra esportiva": (0.5, 0.25),
+    "Piscina": (0.5, 0.25),
+    "Garagem/Estacionamento fora da projeção": (0.5, 0.25)
+}
+
 # Percentuais de equivalência por destinação principal (Manual Sero 08/2024)
 percentuais_destinacao = {
     "Residencial Unifamiliar": 0.89,
@@ -48,6 +56,15 @@ with st.form("form_inss"):
     area_principal = st.number_input("Área principal da obra (m²)", min_value=1.0, value=100.0)
     percentual_fixo = percentuais_destinacao.get(tipo_obra, 1.0)
     area_total_calculo = area_principal * percentual_fixo
+
+    st.subheader("Áreas Complementares")
+    area_complementar_total = 0.0
+    for area, (perc_coberta, perc_descoberta) in percentuais_complementares.items():
+        area_coberta = st.number_input(f"Área coberta de {area} (m²)", min_value=0.0, value=0.0)
+        area_descoberta = st.number_input(f"Área descoberta de {area} (m²)", min_value=0.0, value=0.0)
+        area_complementar_total += (area_coberta * perc_coberta) + (area_descoberta * perc_descoberta)
+
+    area_total_calculo += area_complementar_total
 
     vau = st.number_input("Valor Atualizado Unitário - VAU (R$/m²)", min_value=0.0, value=1500.0)
     usa_usinado = st.checkbox("Utiliza usinados/pré-moldados?", value=False)
@@ -104,7 +121,7 @@ if submit:
     st.markdown("---")
     st.subheader("Resultado")
     st.write(f"**Área total considerada para cálculo:** {area_total_calculo:,.2f} m²")
-    st.write(f"**Percentual de equivalência aplicado:** {percentual_fixo * 100:.0f}%")
+    st.write(f"**Percentual de equivalência aplicado à área principal:** {percentual_fixo * 100:.0f}%")
     st.write(f"**Base COD:** R$ {cod:,.2f}")
     st.write(f"**Percentual de mão de obra aplicado:** {percentual_mao_obra*100:.0f}%")
     st.write(f"**RMT calculada:** R$ {rmt:,.2f}")
@@ -120,4 +137,5 @@ if submit:
         st.write(f"**Fator de ajuste não aplicado**")
 
     st.success(f"Valor estimado do INSS devido: R$ {inss:,.2f}")
+
 
