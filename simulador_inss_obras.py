@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import date
 
 st.set_page_config(page_title="Simulador INSS de Obras", layout="centered")
 
@@ -53,6 +54,10 @@ with st.form("form_inss"):
     tipo_obra = st.selectbox("Tipo da Obra", list(percentuais_mao_obra.keys()))
     tipo_material = st.selectbox("Tipo de Material", ["Alvenaria", "Madeira", "Mista"])
 
+    estado = st.selectbox("Estado da obra (UF)", ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"])
+    data_inicio = st.date_input("Data de início da obra", value=date(2023, 1, 1))
+    data_fim = st.date_input("Data de conclusão da obra", value=date.today())
+
     area_principal = st.number_input("Área principal da obra (m²)", min_value=1.0, value=100.0)
     percentual_fixo = percentuais_destinacao.get(tipo_obra, 1.0)
     area_total_calculo = area_principal * percentual_fixo
@@ -73,10 +78,15 @@ with st.form("form_inss"):
     e_pf = st.checkbox("Obra registrada como Pessoa Física?", value=True)
     dctf_mensal = st.checkbox("Entrega contínua da DCTFWeb?", value=True)
     rem_corrente = st.number_input("Total de remunerações declaradas (R$)", min_value=0.0, value=80000.0)
+    creditos = st.number_input("Créditos a compensar (R$)", min_value=0.0, value=0.0)
 
     submit = st.form_submit_button("Calcular INSS")
 
 if submit:
+    # Verifica decadência (5 anos)
+    anos_conclusao = (date.today() - data_fim).days / 365
+    obra_decadente = anos_conclusao > 5
+
     # 1. Cálculo do COD (Custo da Obra Determinado)
     cod = vau * area_total_calculo
     if usa_usinado:
@@ -113,10 +123,11 @@ if submit:
     else:
         base_ajustada = base_social
 
-    # 5. INSS devido
-    inss = base_ajustada * 0.20
+    # 5. INSS devido (aplicando créditos)
+    inss_bruto = base_ajustada * 0.20
+    inss_final = max(inss_bruto - creditos, 0)
     inss_sem_ajuste = base_social * 0.20
-    economia = inss_sem_ajuste - inss
+    economia = inss_sem_ajuste - inss_bruto
 
     st.markdown("---")
     st.subheader("Resultado")
@@ -136,6 +147,8 @@ if submit:
     else:
         st.write(f"**Fator de ajuste não aplicado**")
 
-    st.success(f"Valor estimado do INSS devido: R$ {inss:,.2f}")
+    st.write(f"**Créditos compensados:** R$ {creditos:,.2f}")
+    st.success(f"Valor estimado do INSS devido: R$ {inss_final:,.2f}")
 
-
+    if obra_decadente:
+        st.warning("Obra concluída há mais de 5 anos — pode estar dentro do prazo decadente (verifique com contador).")
