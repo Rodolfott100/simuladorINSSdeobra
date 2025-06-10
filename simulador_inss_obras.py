@@ -37,7 +37,7 @@ percentuais_destinacao = {
     "Conjunto Habitacional Popular": 0.98,
 }
 
-# Tabela de percentuais de mão de obra conforme tipo de obra e material
+# Percentuais de mão de obra por tipo e material
 percentuais_mao_obra = {
     "Residencial Unifamiliar": {"Alvenaria": 0.20, "Madeira": 0.15, "Mista": 0.15},
     "Residencial Multifamiliar": {"Alvenaria": 0.20, "Madeira": 0.15, "Mista": 0.15},
@@ -48,15 +48,34 @@ percentuais_mao_obra = {
     "Conjunto Habitacional Popular": {"Alvenaria": 0.12, "Madeira": 0.07, "Mista": 0.07},
 }
 
-# Entradas do usuário
+# Dicionário de VAU por estado, mês e tipo de obra - dados de maio/2025
+vau_por_estado = {
+    "MG": {
+        "2025-05": {
+            "Residencial Unifamiliar": 2903.48,
+            "Residencial Multifamiliar": 2505.33,
+            "Comercial Salas e Lojas": 2814.14,
+            "Edifício de Garagens": 2814.14,
+            "Galpão Industrial": 1241.72,
+            "Casa Popular": 1614.68,
+            "Conjunto Habitacional Popular": 1614.68
+        }
+    },
+    # Outros estados e meses podem ser adicionados
+}
+
 with st.form("form_inss"):
     st.subheader("Dados da Obra")
     tipo_obra = st.selectbox("Tipo da Obra", list(percentuais_mao_obra.keys()))
     tipo_material = st.selectbox("Tipo de Material", ["Alvenaria", "Madeira", "Mista"])
 
-    estado = st.selectbox("Estado da obra (UF)", ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"])
+    estado = st.selectbox("Estado da obra (UF)", list(vau_por_estado.keys()))
     data_inicio = st.date_input("Data de início da obra", value=date(2023, 1, 1))
     data_fim = st.date_input("Data de conclusão da obra", value=date.today())
+
+    # Mês de referência para o VAU
+    ano_mes_vau = st.date_input("Mês de referência do VAU", value=date(2025, 5, 1), format="MM/YYYY")
+    chave_mes = ano_mes_vau.strftime("%Y-%m")
 
     area_principal = st.number_input("Área principal da obra (m²)", min_value=1.0, value=100.0)
     percentual_fixo = percentuais_destinacao.get(tipo_obra, 1.0)
@@ -71,7 +90,13 @@ with st.form("form_inss"):
 
     area_total_calculo += area_complementar_total
 
-    vau = st.number_input("Valor Atualizado Unitário - VAU (R$/m²)", min_value=0.0, value=1500.0)
+    vau = vau_por_estado.get(estado, {}).get(chave_mes, {}).get(tipo_obra, 0.0)
+    if vau == 0.0:
+        st.warning("VAU não encontrado para esta combinação. Insira manualmente.")
+        vau = st.number_input("VAU (R$/m²)", min_value=0.0, value=1500.0)
+    else:
+        st.write(f"**VAU automático ({chave_mes}, {estado}): R$ {vau:,.2f}**")
+
     usa_usinado = st.checkbox("Utiliza usinados/pré-moldados?", value=False)
 
     st.subheader("Informações Jurídicas")
@@ -83,20 +108,16 @@ with st.form("form_inss"):
     submit = st.form_submit_button("Calcular INSS")
 
 if submit:
-    # Verifica decadência (5 anos)
     anos_conclusao = (date.today() - data_fim).days / 365
     obra_decadente = anos_conclusao > 5
 
-    # 1. Cálculo do COD (Custo da Obra Determinado)
     cod = vau * area_total_calculo
     if usa_usinado:
         cod *= 0.95
 
-    # 2. RMT (Remuneração estimada da mão de obra)
     percentual_mao_obra = percentuais_mao_obra[tipo_obra][tipo_material]
     rmt = cod * percentual_mao_obra
 
-    # 3. Fator social (conforme área principal da obra)
     if area_principal <= 100:
         fator_social = 0.20
     elif area_principal <= 200:
@@ -110,7 +131,6 @@ if submit:
 
     base_social = cod * fator_social
 
-    # 4. Fator de ajuste (condicional)
     fator_ajuste_aplicado = False
     if e_pf and dctf_mensal:
         percentual_min = 0.5 if area_principal <= 350 else 0.7
@@ -123,7 +143,6 @@ if submit:
     else:
         base_ajustada = base_social
 
-    # 5. INSS devido (aplicando créditos)
     inss_bruto = base_ajustada * 0.20
     inss_final = max(inss_bruto - creditos, 0)
     inss_sem_ajuste = base_social * 0.20
