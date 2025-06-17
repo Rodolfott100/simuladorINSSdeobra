@@ -73,9 +73,11 @@ with st.form("form_inss"):
     data_inicio = st.date_input("Data de início da obra", value=date(2023, 1, 1))
     data_fim = st.date_input("Data de conclusão da obra", value=date.today())
 
-    # Mês de referência para o VAU
-    ano_mes_vau = st.date_input("Mês de referência do VAU", value=date(2025, 5, 1), format="MM/YYYY")
-    chave_mes = ano_mes_vau.strftime("%Y-%m")
+    # Mês de referência para o VAU (ano e mês separados)
+    st.markdown("### Mês de referência do VAU")
+    ano = st.selectbox("Ano", list(range(2020, 2031)), index=5)
+    mes = st.selectbox("Mês", list(range(1, 13)), index=4)
+    chave_mes = f"{ano}-{mes:02d}"
 
     area_principal = st.number_input("Área principal da obra (m²)", min_value=1.0, value=100.0)
     percentual_fixo = percentuais_destinacao.get(tipo_obra, 1.0)
