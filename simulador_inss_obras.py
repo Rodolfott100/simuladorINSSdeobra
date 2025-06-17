@@ -50,7 +50,8 @@ percentuais_mao_obra = {
 
 # Dicionário de VAU por estado, mês e tipo de obra - dados de maio/2025
 vau_por_estado = {
-    "MG": {
+    "AC": {}, "AL": {}, "AP": {}, "AM": {}, "BA": {}, "CE": {}, "DF": {}, "ES": {}, "GO": {}, "MA": {}, "MT": {},
+    "MS": {}, "MG": {
         "2025-05": {
             "Residencial Unifamiliar": 2903.48,
             "Residencial Multifamiliar": 2505.33,
@@ -61,7 +62,7 @@ vau_por_estado = {
             "Conjunto Habitacional Popular": 1614.68
         }
     },
-    # Outros estados e meses podem ser adicionados
+    "PA": {}, "PB": {}, "PR": {}, "PE": {}, "PI": {}, "RJ": {}, "RN": {}, "RS": {}, "RO": {}, "RR": {}, "SC": {}, "SP": {}, "SE": {}, "TO": {}
 }
 
 with st.form("form_inss"):
@@ -72,12 +73,6 @@ with st.form("form_inss"):
     estado = st.selectbox("Estado da obra (UF)", list(vau_por_estado.keys()))
     data_inicio = st.date_input("Data de início da obra", value=date(2023, 1, 1))
     data_fim = st.date_input("Data de conclusão da obra", value=date.today())
-
-    # Mês de referência para o VAU (ano e mês separados)
-    st.markdown("### Mês de referência do VAU")
-    ano = st.selectbox("Ano", list(range(2020, 2031)), index=5)
-    mes = st.selectbox("Mês", list(range(1, 13)), index=4)
-    chave_mes = f"{ano}-{mes:02d}"
 
     area_principal = st.number_input("Área principal da obra (m²)", min_value=1.0, value=100.0)
     percentual_fixo = percentuais_destinacao.get(tipo_obra, 1.0)
@@ -92,12 +87,11 @@ with st.form("form_inss"):
 
     area_total_calculo += area_complementar_total
 
+    chave_mes = "2025-05"
     vau = vau_por_estado.get(estado, {}).get(chave_mes, {}).get(tipo_obra, 0.0)
     if vau == 0.0:
         st.warning("VAU não encontrado para esta combinação. Insira manualmente.")
         vau = st.number_input("VAU (R$/m²)", min_value=0.0, value=1500.0)
-    else:
-        st.write(f"**VAU automático ({chave_mes}, {estado}): R$ {vau:,.2f}**")
 
     usa_usinado = st.checkbox("Utiliza usinados/pré-moldados?", value=False)
 
@@ -173,3 +167,4 @@ if submit:
 
     if obra_decadente:
         st.warning("Obra concluída há mais de 5 anos — pode estar dentro do prazo decadente (verifique com contador).")
+
